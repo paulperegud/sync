@@ -1,0 +1,16 @@
+%% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% ex: ts=4 sw=4 ft=erlang et
+
+FsDeps = [{fs, ".*", {git, "git://github.com/synrc/fs", {tag, "1.4"}}}].
+
+case os:getenv("WITH_FS") of
+    false -> CONFIG;
+    _ ->
+        case lists:keysearch(deps, 1, CONFIG) of
+            {value, {deps, Deps}} ->
+                Deps1 = Deps ++ FsDeps,
+                lists:keyreplace(deps, 1, CONFIG, {deps, Deps1});
+            false ->
+                CONFIG ++ [{deps, FsDeps}]
+        end
+end.

@@ -1,0 +1,10 @@
+%% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% ex: ts=4 sw=4 ft=erlang et
+
+case os:getenv("WITH_FS") of
+    false -> CONFIG;
+    _ ->
+        [{application,Name,Config}] = CONFIG,
+        {value, {applications, Apps}} = lists:keysearch(applications, 1, Config),
+        [{application,Name,lists:keyreplace(applications, 1, Config, {applications, Apps ++ [fs]})}]
+end.

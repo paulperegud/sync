@@ -45,6 +45,7 @@
     src_file_lastmod = [] :: [{file:filename(), timestamp()}],
     hrl_file_lastmod = [] :: [{file:filename(), timestamp()}],
     timers = [],
+    has_fs = erlang:function_exported(fs, subscribe, 0),
     patching = false,
     paused = false
 }).
@@ -112,6 +113,8 @@ init([]) ->
     %% Trap exits to catch failing processes...
     erlang:process_flag(trap_exit, true),
 
+    catch fs:subscribe(),
+
     %% Kick off the discovery process...
     rescan(),
 
@@ -139,7 +142,7 @@ handle_cast(discover_modules, State) ->
     FilteredModules = filter_modules_to_scan(Modules),
 
     %% Schedule the next interval...
-    NewTimers = schedule_cast(discover_modules, 30000, State#state.timers),
+    NewTimers = schedule_cast(discover_modules, 30000, State#state.timers, State#state.has_fs),
 
     %% Return with updated modules...
     NewState = State#state { modules=FilteredModules, timers=NewTimers },
@@ -169,7 +172,7 @@ handle_cast(discover_src_files, State) ->
     HrlFiles = lists:usort(lists:foldl(Fhrl, [], State#state.hrl_dirs)),
 
     %% Schedule the next interval...
-    NewTimers = schedule_cast(discover_src_files, 5000, State#state.timers),
+    NewTimers = schedule_cast(discover_src_files, 5000, State#state.timers, State#state.has_fs),
 
     %% Return with updated files...
     NewState = State#state { src_files=ErlFiles, hrl_files=HrlFiles, timers=NewTimers },
@@ -189,7 +192,7 @@ handle_cast(compare_beams, State) ->
     process_beam_lastmod(State#state.beam_lastmod, NewBeamLastMod, State#state.patching),
 
     %% Schedule the next interval...
-    NewTimers = schedule_cast(compare_beams, 2000, State#state.timers),
+    NewTimers = schedule_cast(compare_beams, 2000, State#state.timers, State#state.has_fs),
 
     %% Return with updated beam lastmod...
     NewState = State#state { beam_lastmod=NewBeamLastMod, timers=NewTimers },
@@ -207,7 +210,7 @@ handle_cast(compare_src_files, State) ->
     process_src_file_lastmod(State#state.src_file_lastmod, NewSrcFileLastMod, State#state.patching),
 
     %% Schedule the next interval...
-    NewTimers = schedule_cast(compare_src_files, 1000, State#state.timers),
+    NewTimers = schedule_cast(compare_src_files, 1000, State#state.timers, State#state.has_fs),
 
     %% Return with updated src_file lastmod...
     NewState = State#state { src_file_lastmod=NewSrcFileLastMod, timers=NewTimers },
@@ -225,7 +228,7 @@ handle_cast(compare_hrl_files, State) ->
     process_hrl_file_lastmod(State#state.hrl_file_lastmod, NewHrlFileLastMod, State#state.src_files, State#state.patching),
 
     %% Schedule the next interval...
-    NewTimers = schedule_cast(compare_hrl_files, 2000, State#state.timers),
+    NewTimers = schedule_cast(compare_hrl_files, 2000, State#state.timers, State#state.has_fs),
 
     %% Return with updated hrl_file lastmod...
     NewState = State#state { hrl_file_lastmod=NewHrlFileLastMod, timers=NewTimers },
@@ -259,6 +262,15 @@ dirs(DirsAndOpts) ->
          Dir 
      end || {Dir, Opts} <- DirsAndOpts].
 
+handle_info(_, State) when State#state.paused==true ->
+    %% If paused, just absorb the request and do nothing
+    {noreply, State};
+handle_info({_Pid, {fs, file_event}, {Path, _Opt}}, State) ->
+    case path_filter(Path) of
+        true  -> recompile_src_file(Path, State#state.patching);
+        false -> ok
+    end,
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -270,7 +282,21 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%% PRIVATE FUNCTIONS %%%
 
-schedule_cast(Msg, Default, Timers) ->
+path_filter(P) ->
+    filelib:is_file(P)
+        andalso path_filter_name(filename:basename(P))
+        andalso path_filter_ext(filename:extension(P)).
+
+path_filter_name(".#" ++ _) -> false;
+path_filter_name(_)         -> true.
+
+path_filter_ext(".erl")     -> true;
+path_filter_ext(".dtl")     -> true;
+path_filter_ext(".ex")      -> true;
+path_filter_ext(_)          -> false.
+
+schedule_cast(_sg, _efault, _imers, true) -> [];
+schedule_cast(Msg, Default, Timers, false) ->
     %% Cancel the old timer...
     TRef = proplists:get_value(Msg, Timers),
     timer:cancel(TRef),
@@ -742,7 +768,7 @@ discover_source_dirs(State, ExtraDirs) ->
     %% InitialDirs = sync_utils:initial_src_dirs(),
 
     %% Schedule the next interval...
-    NewTimers = schedule_cast(discover_src_dirs, 30000, State#state.timers),
+    NewTimers = schedule_cast(discover_src_dirs, 30000, State#state.timers, State#state.has_fs),
 
     %% Return with updated dirs...
     NewState = State#state { src_dirs=USortedSrcDirs, hrl_dirs=USortedHrlDirs, timers=NewTimers },
