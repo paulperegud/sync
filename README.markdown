@@ -377,3 +377,17 @@ applications and configuration into the release instead of copying) add a
 	compiler
 ]}.
 ```
+
+## Inotify support
+
+In real life CPU usage might be more than 1-2%. To stop `sync` from doing task
+that can be done match better way, compile it with environment variable
+WITH_FS. Inotify events provided by [synrc/fs](https://github.com/synrc/fs).
+Which claims to work on `Mac`, `Linux`, `Windows`.
+
+NOTE: On Linux you need to install inotify-tools.
+
+``` sh
+export WITH_FS=y
+(rebar get; rebar compile)
+```
