@@ -377,6 +377,9 @@ process_beam_lastmod([], [], EnablePatching, Acc) ->
             fire_onsync([FirstBeam | N])
     end,
     ok;
+process_beam_lastmod([], _Other, _, _) ->
+    sync_notify:log_errors("WAT in ~p:~p", [?MODULE, "process_beam_lastmod/4"]),
+    ok;
 process_beam_lastmod(undefined, _Other, _, _) ->
     %% First load, do nothing.
     ok.
