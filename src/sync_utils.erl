@@ -103,6 +103,7 @@ get_filetype(Source) when is_list(Source) ->
     case Ext of
         ".erl" when SecondExt =:= ".dtl" -> dtl;
         ".erl" -> erl;
+        ".dtl" -> dtl;
         ".ex" -> elixir
     end.
 
