@@ -43,6 +43,8 @@ set_onsync(Fun) ->
 %% parent directories for options
 get_options([]) ->
     undefined;
+get_options("/") ->
+    undefined;
 get_options(SrcDir) ->
     case gen_server:call(?SERVER, {get_options, SrcDir}) of
         {ok, Options} -> {ok, Options};
