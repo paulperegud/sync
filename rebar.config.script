@@ -1,7 +1,7 @@
 %% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ts=4 sw=4 ft=erlang et
 
-FsDeps = [{fs, ".*", {git, "git://github.com/synrc/fs", {tag, "1.4"}}}].
+FsDeps = [{fs, ".*", {git, "git://github.com/synrc/fs", {tag, "0.9"}}}].
 
 case os:getenv("WITH_FS") of
     false -> CONFIG;
