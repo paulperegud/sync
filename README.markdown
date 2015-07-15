@@ -391,3 +391,14 @@ NOTE: On Linux you need to install inotify-tools.
 export WITH_FS=y
 (rebar get; rebar compile)
 ```
+
+To compile with `rebar3` add `overrides` in `rebar.config`.
+
+``` erlang
+{overrides, [{override, fs,
+              [{plugins, [pc]},
+               {provider_hooks,
+                [{pre,
+                  [{compile, {pc, compile}},
+                   {clean, {pc, clean}}]}]}]}]}.
+```
